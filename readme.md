@@ -1,4 +1,4 @@
-![Screenshot](main.png)
+![Screenshot](main.PNG)
 
 ![Screenshot](multiscene.PNG)
 
