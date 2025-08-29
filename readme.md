@@ -211,21 +211,21 @@ The Laboratory provides:
 The application organizes content into two main areas:
 
 ### Multiscene Organization
-
+```
 multiscene/ 
 ├── blueprints/ # Story blueprint templates (.story.txt files) 
 ├── storyboards/ # Generated story bibles and scene plans 
 ├── stories/ # Complete multi-scene stories 
 ├── audio/ # Generated audio files 
 └── stats/ # Generation statistics and metadata
-
+```
 ### Laboratory Organization
-
+```
 laboratory/ 
 ├── templates/ # Prompt templates for single scenes 
 ├── scenes/ # Generated single scenes and test content 
 └── metadata/ # Prompts, statistics, and test results
-
+```
 ## Creating Story Blueprints
 
 Story blueprints are the foundation of multi-scene stories. Create `.story.txt` files in the `multiscene/blueprints/` folder, you can edit them in a text editor.
