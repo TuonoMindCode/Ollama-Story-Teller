@@ -1,3 +1,9 @@
+![Screenshot](main.png)
+
+![Screenshot](multiscene.PNG)
+
+![Screenshot](sceneworkshop.PNG)
+
 # Ollama Story Teller
 
 I dont know mutch about python programming this app has been done by using easycode claude sonnet 4.
