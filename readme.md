@@ -304,4 +304,14 @@ Climax/resolution
 - Use the Single Scene Laboratory to test settings before multi-scene generation
 
 
+ ## Citation
+> If you use F5-TTS in your work, please cite:
+
+@article{chen-etal-2024-f5tts,
+      title={F5-TTS: A Fairytaler that Fakes Fluent and Faithful Speech with Flow Matching}, 
+      author={Yushen Chen and Zhikang Niu and Ziyang Ma and Keqi Deng and Chunhui Wang and Jian Zhao and Kai Yu and Xie Chen},
+      journal={arXiv preprint arXiv:2410.06885},
+      year={2024},
+}
+
 **Happy Storytelling!**"# Ollama-Story-Teller" 
