@@ -1,3 +1,9 @@
+![Screenshot](main.PNG)
+
+![Screenshot](multiscene.PNG)
+
+![Screenshot](sceneworkshop.PNG)
+
 # Ollama Story Teller
 
 I dont know mutch about python programming this app has been done by using easycode claude sonnet 4.
@@ -205,21 +211,21 @@ The Laboratory provides:
 The application organizes content into two main areas:
 
 ### Multiscene Organization
-
+```
 multiscene/ 
 ├── blueprints/ # Story blueprint templates (.story.txt files) 
 ├── storyboards/ # Generated story bibles and scene plans 
 ├── stories/ # Complete multi-scene stories 
 ├── audio/ # Generated audio files 
 └── stats/ # Generation statistics and metadata
-
+```
 ### Laboratory Organization
-
+```
 laboratory/ 
 ├── templates/ # Prompt templates for single scenes 
 ├── scenes/ # Generated single scenes and test content 
 └── metadata/ # Prompts, statistics, and test results
-
+```
 ## Creating Story Blueprints
 
 Story blueprints are the foundation of multi-scene stories. Create `.story.txt` files in the `multiscene/blueprints/` folder, you can edit them in a text editor.
@@ -297,5 +303,15 @@ Climax/resolution
 - Review generated storyboards to understand AI reasoning
 - Use the Single Scene Laboratory to test settings before multi-scene generation
 
+
+ ## Citation
+> If you use F5-TTS in your work, please cite:
+
+@article{chen-etal-2024-f5tts,
+      title={F5-TTS: A Fairytaler that Fakes Fluent and Faithful Speech with Flow Matching}, 
+      author={Yushen Chen and Zhikang Niu and Ziyang Ma and Keqi Deng and Chunhui Wang and Jian Zhao and Kai Yu and Xie Chen},
+      journal={arXiv preprint arXiv:2410.06885},
+      year={2024},
+}
 
 **Happy Storytelling!**"# Ollama-Story-Teller" 
