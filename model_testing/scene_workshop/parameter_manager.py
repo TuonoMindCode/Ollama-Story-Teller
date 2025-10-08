@@ -26,13 +26,16 @@ class ParameterManager:
                 top_p_range = self.workshop.current_settings.get('top_p_range') 
                 top_k_range = self.workshop.current_settings.get('top_k_range')
                 
-                # Provide defaults if ranges are None
+                # Provide defaults if ranges are None - use individual values as fallback
                 if temp_range is None:
-                    temp_range = {'min': 0.8, 'max': 0.8}
+                    current_temp = self.workshop.current_settings.get('temperature', 0.8)
+                    temp_range = {'min': current_temp, 'max': current_temp}
                 if top_p_range is None:
-                    top_p_range = {'min': 0.9, 'max': 0.9}
+                    current_top_p = self.workshop.current_settings.get('top_p', 0.9)
+                    top_p_range = {'min': current_top_p, 'max': current_top_p}
                 if top_k_range is None:
-                    top_k_range = {'min': 40, 'max': 40}
+                    current_top_k = self.workshop.current_settings.get('top_k', 40)
+                    top_k_range = {'min': current_top_k, 'max': current_top_k}
                 
                 # Handle both dictionary and tuple formats
                 if isinstance(temp_range, dict):
@@ -267,119 +270,261 @@ class ParameterManager:
         input("Press Enter to continue...")
     
     def _configure_temperature_range(self):
-        """Configure temperature range"""
-        current_range = self.workshop.current_settings['temp_range']
+        """Configure temperature range or fixed value based on current mode"""
+        mode = self.workshop.current_settings.get('parameter_mode', 'fixed')
         
-        print(f"\nTEMPERATURE RANGE")
-        print("="*30)
-        print(f"Current: {current_range[0]} - {current_range[1]}")
-        print("Valid: 0.0 - 2.0 (Lower=focused, Higher=creative)")
-        print("Recommended: 0.3-0.7 (conservative), 0.8-1.2 (balanced), 1.0-1.6 (creative)")
+        if mode == 'fixed':
+            # For fixed mode, just ask for a single temperature value
+            current_temp = self.workshop.current_settings.get('temperature', 0.8)
+            
+            print(f"\nTEMPERATURE (FIXED MODE)")
+            print("="*30)
+            print(f"Current: {current_temp}")
+            print("Valid: 0.0 - 2.0 (Lower=focused, Higher=creative)")
+            print("Recommended: 0.3-0.7 (conservative), 0.8-1.2 (balanced), 1.0-1.6 (creative)")
+            
+            try:
+                temp_input = input(f"Temperature [{current_temp}]: ").strip()
+                if temp_input:
+                    new_temp = float(temp_input)
+                    if 0.0 <= new_temp <= 2.0:
+                        self.workshop.current_settings['temperature'] = new_temp
+                        # Also set the range to the same value for consistency
+                        self.workshop.current_settings['temp_range'] = (new_temp, new_temp)
+                        print(f"Fixed temperature: {new_temp}")
+                        
+                        # Give feedback
+                        if new_temp <= 0.7:
+                            print("Low temperature: Focused, predictable output")
+                        elif new_temp <= 1.2:
+                            print("Moderate temperature: Balanced creativity")
+                        else:
+                            print("High temperature: Very creative, potentially inconsistent")
+                    else:
+                        print("Temperature must be 0.0 - 2.0")
+            except ValueError:
+                print("Invalid input")
         
-        try:
-            min_temp = input(f"Min temperature [{current_range[0]}]: ").strip()
-            min_temp = float(min_temp) if min_temp else current_range[0]
+        else:
+            # For incremental/random modes, ask for min and max range
+            # Get current range, falling back to individual temperature value if range doesn't exist
+            current_range = self.workshop.current_settings.get('temp_range')
+            if current_range is None:
+                current_temp = self.workshop.current_settings.get('temperature', 0.8)
+                current_range = (current_temp, current_temp)
+                self.workshop.current_settings['temp_range'] = current_range
             
-            max_temp = input(f"Max temperature [{current_range[1]}]: ").strip()
-            max_temp = float(max_temp) if max_temp else current_range[1]
+            print(f"\nTEMPERATURE RANGE ({mode.upper()} MODE)")
+            print("="*40)
+            print(f"Current: {current_range[0]} - {current_range[1]}")
+            print("Valid: 0.0 - 2.0 (Lower=focused, Higher=creative)")
+            print("Recommended: 0.3-0.7 (conservative), 0.8-1.2 (balanced), 1.0-1.6 (creative)")
             
-            if min_temp > max_temp:
-                min_temp, max_temp = max_temp, min_temp
-                print("Swapped min/max values")
+            if mode == 'incremental':
+                print("Note: First scene uses min value, last scene uses max value")
+            elif mode == 'random':
+                print("Note: Each scene gets random value within this range")
             
-            if 0.0 <= min_temp <= 2.0 and 0.0 <= max_temp <= 2.0:
-                self.workshop.current_settings['temp_range'] = (min_temp, max_temp)
-                print(f"Temperature range: {min_temp} - {max_temp}")
+            try:
+                min_temp = input(f"Min temperature [{current_range[0]}]: ").strip()
+                min_temp = float(min_temp) if min_temp else current_range[0]
                 
-                # Give feedback on selected range
-                if max_temp <= 0.7:
-                    print("Low temperature: Focused, predictable output")
-                elif max_temp <= 1.2:
-                    print("Moderate temperature: Balanced creativity")
+                max_temp = input(f"Max temperature [{current_range[1]}]: ").strip()
+                max_temp = float(max_temp) if max_temp else current_range[1]
+                
+                if min_temp > max_temp:
+                    min_temp, max_temp = max_temp, min_temp
+                    print("Swapped min/max values")
+                
+                if 0.0 <= min_temp <= 2.0 and 0.0 <= max_temp <= 2.0:
+                    self.workshop.current_settings['temp_range'] = (min_temp, max_temp)
+                    # Update individual temperature to middle of range
+                    self.workshop.current_settings['temperature'] = (min_temp + max_temp) / 2
+                    print(f"Temperature range: {min_temp} - {max_temp}")
+                    
+                    # Give feedback on selected range
+                    if max_temp <= 0.7:
+                        print("Low temperature range: Focused, predictable output")
+                    elif max_temp <= 1.2:
+                        print("Moderate temperature range: Balanced creativity")
+                    else:
+                        print("High temperature range: Very creative, potentially inconsistent")
                 else:
-                    print("High temperature: Very creative, potentially inconsistent")
-            else:
-                print("Values must be 0.0 - 2.0")
-        except ValueError:
-            print("Invalid input")
+                    print("Values must be 0.0 - 2.0")
+            except ValueError:
+                print("Invalid input")
         
         input("Press Enter to continue...")
     
     def _configure_top_p_range(self):
-        """Configure top-p range"""
-        current_range = self.workshop.current_settings['top_p_range']
+        """Configure top-p range or fixed value based on current mode"""
+        mode = self.workshop.current_settings.get('parameter_mode', 'fixed')
         
-        print(f"\nTOP-P RANGE")
-        print("="*20)
-        print(f"Current: {current_range[0]} - {current_range[1]}")
-        print("Valid: 0.0 - 1.0 (Lower=focused, Higher=diverse)")
-        print("Recommended: 0.7-0.9 (focused), 0.85-0.95 (balanced), 0.9-1.0 (diverse)")
+        if mode == 'fixed':
+            # For fixed mode, just ask for a single top-p value
+            current_top_p = self.workshop.current_settings.get('top_p', 0.9)
+            
+            print(f"\nTOP-P (FIXED MODE)")
+            print("="*20)
+            print(f"Current: {current_top_p}")
+            print("Valid: 0.0 - 1.0 (Lower=focused, Higher=diverse)")
+            print("Recommended: 0.7-0.9 (focused), 0.85-0.95 (balanced), 0.9-1.0 (diverse)")
+            
+            try:
+                top_p_input = input(f"Top-p [{current_top_p}]: ").strip()
+                if top_p_input:
+                    new_top_p = float(top_p_input)
+                    if 0.0 <= new_top_p <= 1.0:
+                        self.workshop.current_settings['top_p'] = new_top_p
+                        # Also set the range to the same value for consistency
+                        self.workshop.current_settings['top_p_range'] = (new_top_p, new_top_p)
+                        print(f"Fixed top-p: {new_top_p}")
+                        
+                        # Give feedback
+                        if new_top_p <= 0.8:
+                            print("Low top-p: Very focused vocabulary")
+                        elif new_top_p <= 0.95:
+                            print("Moderate top-p: Good balance")
+                        else:
+                            print("High top-p: Maximum vocabulary diversity")
+                    else:
+                        print("Top-p must be 0.0 - 1.0")
+            except ValueError:
+                print("Invalid input")
         
-        try:
-            min_p = input(f"Min top-p [{current_range[0]}]: ").strip()
-            min_p = float(min_p) if min_p else current_range[0]
+        else:
+            # For incremental/random modes, ask for min and max range
+            current_range = self.workshop.current_settings.get('top_p_range')
+            if current_range is None:
+                current_top_p = self.workshop.current_settings.get('top_p', 0.9)
+                current_range = (current_top_p, current_top_p)
+                self.workshop.current_settings['top_p_range'] = current_range
             
-            max_p = input(f"Max top-p [{current_range[1]}]: ").strip()
-            max_p = float(max_p) if max_p else current_range[1]
+            print(f"\nTOP-P RANGE ({mode.upper()} MODE)")
+            print("="*30)
+            print(f"Current: {current_range[0]} - {current_range[1]}")
+            print("Valid: 0.0 - 1.0 (Lower=focused, Higher=diverse)")
+            print("Recommended: 0.7-0.9 (focused), 0.85-0.95 (balanced), 0.9-1.0 (diverse)")
             
-            if min_p > max_p:
-                min_p, max_p = max_p, min_p
-                print("Swapped min/max values")
+            if mode == 'incremental':
+                print("Note: First scene uses min value, last scene uses max value")
+            elif mode == 'random':
+                print("Note: Each scene gets random value within this range")
             
-            if 0.0 <= min_p <= 1.0 and 0.0 <= max_p <= 1.0:
-                self.workshop.current_settings['top_p_range'] = (min_p, max_p)
-                print(f"Top-p range: {min_p} - {max_p}")
+            try:
+                min_p = input(f"Min top-p [{current_range[0]}]: ").strip()
+                min_p = float(min_p) if min_p else current_range[0]
                 
-                # Give feedback
-                if max_p <= 0.8:
-                    print("Low top-p: Very focused vocabulary")
-                elif max_p <= 0.95:
-                    print("Moderate top-p: Good balance")
+                max_p = input(f"Max top-p [{current_range[1]}]: ").strip()
+                max_p = float(max_p) if max_p else current_range[1]
+                
+                if min_p > max_p:
+                    min_p, max_p = max_p, min_p
+                    print("Swapped min/max values")
+                
+                if 0.0 <= min_p <= 1.0 and 0.0 <= max_p <= 1.0:
+                    self.workshop.current_settings['top_p_range'] = (min_p, max_p)
+                    # Update individual top_p to middle of range
+                    self.workshop.current_settings['top_p'] = (min_p + max_p) / 2
+                    print(f"Top-p range: {min_p} - {max_p}")
+                    
+                    # Give feedback
+                    if max_p <= 0.8:
+                        print("Low top-p range: Very focused vocabulary")
+                    elif max_p <= 0.95:
+                        print("Moderate top-p range: Good balance")
+                    else:
+                        print("High top-p range: Maximum vocabulary diversity")
                 else:
-                    print("High top-p: Maximum vocabulary diversity")
-            else:
-                print("Values must be 0.0 - 1.0")
-        except ValueError:
-            print("Invalid input")
+                    print("Values must be 0.0 - 1.0")
+            except ValueError:
+                print("Invalid input")
         
         input("Press Enter to continue...")
     
     def _configure_top_k_range(self):
-        """Configure top-k range"""
-        current_range = self.workshop.current_settings['top_k_range']
+        """Configure top-k range or fixed value based on current mode"""
+        mode = self.workshop.current_settings.get('parameter_mode', 'fixed')
         
-        print(f"\nTOP-K RANGE")
-        print("="*20)
-        print(f"Current: {int(current_range[0])} - {int(current_range[1])}")
-        print("Common: 10-80 (Lower=focused, Higher=diverse)")
-        print("Recommended: 20-40 (focused), 30-60 (balanced), 50-100 (diverse)")
+        if mode == 'fixed':
+            # For fixed mode, just ask for a single top-k value
+            current_top_k = self.workshop.current_settings.get('top_k', 40)
+            
+            print(f"\nTOP-K (FIXED MODE)")
+            print("="*20)
+            print(f"Current: {current_top_k}")
+            print("Common: 10-80 (Lower=focused, Higher=diverse)")
+            print("Recommended: 20-40 (focused), 30-60 (balanced), 50-100 (diverse)")
+            
+            try:
+                top_k_input = input(f"Top-k [{current_top_k}]: ").strip()
+                if top_k_input:
+                    new_top_k = int(top_k_input)
+                    if new_top_k >= 1:
+                        self.workshop.current_settings['top_k'] = new_top_k
+                        # Also set the range to the same value for consistency
+                        self.workshop.current_settings['top_k_range'] = (new_top_k, new_top_k)
+                        print(f"Fixed top-k: {new_top_k}")
+                        
+                        # Give feedback
+                        if new_top_k <= 30:
+                            print("Low top-k: Very focused word selection")
+                        elif new_top_k <= 70:
+                            print("Moderate top-k: Good balance")
+                        else:
+                            print("High top-k: Maximum word choice diversity")
+                    else:
+                        print("Top-k must be 1 or greater")
+            except ValueError:
+                print("Invalid input")
         
-        try:
-            min_k = input(f"Min top-k [{int(current_range[0])}]: ").strip()
-            min_k = int(min_k) if min_k else int(current_range[0])
+        else:
+            # For incremental/random modes, ask for min and max range
+            current_range = self.workshop.current_settings.get('top_k_range')
+            if current_range is None:
+                current_top_k = self.workshop.current_settings.get('top_k', 40)
+                current_range = (current_top_k, current_top_k)
+                self.workshop.current_settings['top_k_range'] = current_range
             
-            max_k = input(f"Max top-k [{int(current_range[1])}]: ").strip()
-            max_k = int(max_k) if max_k else int(current_range[1])
+            print(f"\nTOP-K RANGE ({mode.upper()} MODE)")
+            print("="*30)
+            print(f"Current: {int(current_range[0])} - {int(current_range[1])}")
+            print("Common: 10-80 (Lower=focused, Higher=diverse)")
+            print("Recommended: 20-40 (focused), 30-60 (balanced), 50-100 (diverse)")
             
-            if min_k > max_k:
-                min_k, max_k = max_k, min_k
-                print("Swapped min/max values")
+            if mode == 'incremental':
+                print("Note: First scene uses min value, last scene uses max value")
+            elif mode == 'random':
+                print("Note: Each scene gets random value within this range")
             
-            if min_k >= 1 and max_k >= 1:
-                self.workshop.current_settings['top_k_range'] = (min_k, max_k)
-                print(f"Top-k range: {min_k} - {max_k}")
+            try:
+                min_k = input(f"Min top-k [{int(current_range[0])}]: ").strip()
+                min_k = int(min_k) if min_k else int(current_range[0])
                 
-                # Give feedback
-                if max_k <= 30:
-                    print("Low top-k: Very focused word selection")
-                elif max_k <= 70:
-                    print("Moderate top-k: Good balance")
+                max_k = input(f"Max top-k [{int(current_range[1])}]: ").strip()
+                max_k = int(max_k) if max_k else int(current_range[1])
+                
+                if min_k > max_k:
+                    min_k, max_k = max_k, min_k
+                    print("Swapped min/max values")
+                
+                if min_k >= 1 and max_k >= 1:
+                    self.workshop.current_settings['top_k_range'] = (min_k, max_k)
+                    # Update individual top_k to middle of range
+                    self.workshop.current_settings['top_k'] = int((min_k + max_k) / 2)
+                    print(f"Top-k range: {min_k} - {max_k}")
+                    
+                    # Give feedback
+                    if max_k <= 30:
+                        print("Low top-k range: Very focused word selection")
+                    elif max_k <= 70:
+                        print("Moderate top-k range: Good balance")
+                    else:
+                        print("High top-k range: Maximum word choice diversity")
                 else:
-                    print("High top-k: Maximum word choice diversity")
-            else:
-                print("Values must be 1 or greater")
-        except ValueError:
-            print("Invalid input")
+                    print("Values must be 1 or greater")
+            except ValueError:
+                print("Invalid input")
         
         input("Press Enter to continue...")
     
