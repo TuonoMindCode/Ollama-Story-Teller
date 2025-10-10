@@ -145,7 +145,7 @@ class SceneWorkshop:
                     user_prompt_name = 'Not selected'
                 
                 try:
-                    param_display = self.settings.get_parameter_display() if self.settings else "Settings not available"
+                    param_display = self.parameter_manager.get_parameter_display() if self.parameter_manager else "Parameter manager not available"
                 except Exception as e:
                     print(f"Warning: Could not load parameters: {e}")
                     param_display = "Error loading parameters"

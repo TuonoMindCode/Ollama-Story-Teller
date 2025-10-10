@@ -29,42 +29,63 @@ class ParameterManager:
                 # Provide defaults if ranges are None - use individual values as fallback
                 if temp_range is None:
                     current_temp = self.workshop.current_settings.get('temperature', 0.8)
-                    temp_range = {'min': current_temp, 'max': current_temp}
+                    temp_range = (current_temp, current_temp)
                 if top_p_range is None:
                     current_top_p = self.workshop.current_settings.get('top_p', 0.9)
-                    top_p_range = {'min': current_top_p, 'max': current_top_p}
+                    top_p_range = (current_top_p, current_top_p)
                 if top_k_range is None:
                     current_top_k = self.workshop.current_settings.get('top_k', 40)
-                    top_k_range = {'min': current_top_k, 'max': current_top_k}
+                    top_k_range = (current_top_k, current_top_k)
                 
-                # Handle both dictionary and tuple formats
-                if isinstance(temp_range, dict):
-                    temp_min, temp_max = temp_range.get('min', 0.1), temp_range.get('max', 1.0)
-                else:
-                    temp_min, temp_max = temp_range[0], temp_range[1]
+                # Handle both dictionary and tuple formats safely
+                try:
+                    if isinstance(temp_range, dict):
+                        temp_min, temp_max = temp_range.get('min', 0.8), temp_range.get('max', 0.8)
+                    elif isinstance(temp_range, (list, tuple)) and len(temp_range) >= 2:
+                        temp_min, temp_max = temp_range[0], temp_range[1]
+                    else:
+                        temp_min = temp_max = self.workshop.current_settings.get('temperature', 0.8)
+                except (TypeError, IndexError, KeyError):
+                    temp_min = temp_max = 0.8
                     
-                if isinstance(top_p_range, dict):
-                    top_p_min, top_p_max = top_p_range.get('min', 0.1), top_p_range.get('max', 1.0)
-                else:
-                    top_p_min, top_p_max = top_p_range[0], top_p_range[1]
+                try:
+                    if isinstance(top_p_range, dict):
+                        top_p_min, top_p_max = top_p_range.get('min', 0.9), top_p_range.get('max', 0.9)
+                    elif isinstance(top_p_range, (list, tuple)) and len(top_p_range) >= 2:
+                        top_p_min, top_p_max = top_p_range[0], top_p_range[1]
+                    else:
+                        top_p_min = top_p_max = self.workshop.current_settings.get('top_p', 0.9)
+                except (TypeError, IndexError, KeyError):
+                    top_p_min = top_p_max = 0.9
                     
-                if isinstance(top_k_range, dict):
-                    top_k_min, top_k_max = int(top_k_range.get('min', 1)), int(top_k_range.get('max', 100))
-                else:
-                    top_k_min, top_k_max = int(top_k_range[0]), int(top_k_range[1])
+                try:
+                    if isinstance(top_k_range, dict):
+                        top_k_min, top_k_max = int(top_k_range.get('min', 40)), int(top_k_range.get('max', 40))
+                    elif isinstance(top_k_range, (list, tuple)) and len(top_k_range) >= 2:
+                        top_k_min, top_k_max = int(top_k_range[0]), int(top_k_range[1])
+                    else:
+                        top_k_min = top_k_max = self.workshop.current_settings.get('top_k', 40)
+                except (TypeError, IndexError, KeyError, ValueError):
+                    top_k_min = top_k_max = 40
                 
                 if mode == 'incremental':
                     base_display = f"Incremental: T={temp_min}-{temp_max}, P={top_p_min}-{top_p_max}, K={top_k_min}-{top_k_max}"
                 elif mode == 'random':
                     base_display = f"Random: T={temp_min}-{temp_max}, P={top_p_min}-{top_p_max}, K={top_k_min}-{top_k_max}"
                 else:
-                    base_display = "Unknown mode"
+                    base_display = f"Unknown mode: {mode}"
             
             return f"{base_display}, MaxTokens={max_tokens}"
             
         except Exception as e:
-            # Fallback display
-            return f"Parameters: Error loading ({e})"
+            # More informative fallback display
+            print(f"Debug: Parameter display error: {e}")
+            print(f"Debug: Settings type: {type(self.workshop.current_settings)}")
+            try:
+                mode = self.workshop.current_settings.get('parameter_mode', 'unknown')
+                return f"Mode: {mode}, Error: {str(e)}"
+            except:
+                return f"Parameters: Critical error - {str(e)}"
     
     def get_parameter_values(self, scene_number=0):
         """Get parameter values based on current mode and scene number"""
@@ -202,7 +223,7 @@ class ParameterManager:
             print("1. Set parameter mode (Fixed/Incremental/Random)")
             print("2. Configure temperature range")
             print("3. Configure top-p range")
-            print("4. Configure top-k range)")
+            print("4. Configure top-k range")
             print("5. Configure timeout")
             print("6. Configure max output tokens")
             print("7. Configure model type (Base/Instruct)")
@@ -395,14 +416,30 @@ class ParameterManager:
         else:
             # For incremental/random modes, ask for min and max range
             current_range = self.workshop.current_settings.get('top_p_range')
+            
+            # Handle different formats and None values
             if current_range is None:
                 current_top_p = self.workshop.current_settings.get('top_p', 0.9)
-                current_range = (current_top_p, current_top_p)
-                self.workshop.current_settings['top_p_range'] = current_range
+                min_val, max_val = current_top_p, current_top_p
+            elif isinstance(current_range, dict):
+                # Dictionary format: {'min': 0.8, 'max': 0.9}
+                min_val = current_range.get('min', 0.9)
+                max_val = current_range.get('max', 0.9)
+            elif isinstance(current_range, (list, tuple)) and len(current_range) >= 2:
+                # Tuple/list format: (0.8, 0.9)
+                min_val, max_val = current_range[0], current_range[1]
+            else:
+                # Fallback to individual setting
+                current_top_p = self.workshop.current_settings.get('top_p', 0.9)
+                min_val, max_val = current_top_p, current_top_p
+            
+            # Store as tuple for consistency
+            current_range = (min_val, max_val)
+            self.workshop.current_settings['top_p_range'] = current_range
             
             print(f"\nTOP-P RANGE ({mode.upper()} MODE)")
             print("="*30)
-            print(f"Current: {current_range[0]} - {current_range[1]}")
+            print(f"Current: {min_val} - {max_val}")
             print("Valid: 0.0 - 1.0 (Lower=focused, Higher=diverse)")
             print("Recommended: 0.7-0.9 (focused), 0.85-0.95 (balanced), 0.9-1.0 (diverse)")
             
@@ -412,11 +449,11 @@ class ParameterManager:
                 print("Note: Each scene gets random value within this range")
             
             try:
-                min_p = input(f"Min top-p [{current_range[0]}]: ").strip()
-                min_p = float(min_p) if min_p else current_range[0]
+                min_p = input(f"Min top-p [{min_val}]: ").strip()
+                min_p = float(min_p) if min_p else min_val
                 
-                max_p = input(f"Max top-p [{current_range[1]}]: ").strip()
-                max_p = float(max_p) if max_p else current_range[1]
+                max_p = input(f"Max top-p [{max_val}]: ").strip()
+                max_p = float(max_p) if max_p else max_val
                 
                 if min_p > max_p:
                     min_p, max_p = max_p, min_p
@@ -481,14 +518,30 @@ class ParameterManager:
         else:
             # For incremental/random modes, ask for min and max range
             current_range = self.workshop.current_settings.get('top_k_range')
+            
+            # Handle different formats and None values
             if current_range is None:
                 current_top_k = self.workshop.current_settings.get('top_k', 40)
-                current_range = (current_top_k, current_top_k)
-                self.workshop.current_settings['top_k_range'] = current_range
+                min_val, max_val = current_top_k, current_top_k
+            elif isinstance(current_range, dict):
+                # Dictionary format: {'min': 30, 'max': 50}
+                min_val = int(current_range.get('min', 40))
+                max_val = int(current_range.get('max', 40))
+            elif isinstance(current_range, (list, tuple)) and len(current_range) >= 2:
+                # Tuple/list format: (30, 50)
+                min_val, max_val = int(current_range[0]), int(current_range[1])
+            else:
+                # Fallback to individual setting
+                current_top_k = self.workshop.current_settings.get('top_k', 40)
+                min_val, max_val = current_top_k, current_top_k
+            
+            # Store as tuple for consistency
+            current_range = (min_val, max_val)
+            self.workshop.current_settings['top_k_range'] = current_range
             
             print(f"\nTOP-K RANGE ({mode.upper()} MODE)")
             print("="*30)
-            print(f"Current: {int(current_range[0])} - {int(current_range[1])}")
+            print(f"Current: {min_val} - {max_val}")
             print("Common: 10-80 (Lower=focused, Higher=diverse)")
             print("Recommended: 20-40 (focused), 30-60 (balanced), 50-100 (diverse)")
             
@@ -498,11 +551,11 @@ class ParameterManager:
                 print("Note: Each scene gets random value within this range")
             
             try:
-                min_k = input(f"Min top-k [{int(current_range[0])}]: ").strip()
-                min_k = int(min_k) if min_k else int(current_range[0])
+                min_k = input(f"Min top-k [{min_val}]: ").strip()
+                min_k = int(min_k) if min_k else min_val
                 
-                max_k = input(f"Max top-k [{int(current_range[1])}]: ").strip()
-                max_k = int(max_k) if max_k else int(current_range[1])
+                max_k = input(f"Max top-k [{max_val}]: ").strip()
+                max_k = int(max_k) if max_k else max_val
                 
                 if min_k > max_k:
                     min_k, max_k = max_k, min_k
